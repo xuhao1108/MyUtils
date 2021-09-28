@@ -62,10 +62,13 @@ class Base(object):
         :param image_url: 图片URL路径
         :return:
         """
-        if image_url:
-            response = requests.get(image_url)
-            image_path = PILImage.open(BytesIO(response.content))
-        return Image(image_path)
+        try:
+            if image_url:
+                response = requests.get(image_url)
+                image_path = PILImage.open(BytesIO(response.content))
+            return Image(image_path)
+        except:
+            return image_path
 
 
 class YxhReadExcel(Base):

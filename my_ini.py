@@ -8,7 +8,7 @@ import os
 import configparser
 
 
-def read_ini(ini_path, encoding='utf-8', user_header_key=False):
+def read_ini(ini_path, encoding='utf_8_sig', user_header_key=False):
     """
     读取配置文件
     :param ini_path: 配置文件路径
@@ -19,7 +19,10 @@ def read_ini(ini_path, encoding='utf-8', user_header_key=False):
     config = {}
     # 读取配置文件
     cp = configparser.ConfigParser()
-    cp.read(ini_path, encoding=encoding)
+    try:
+        cp.read(ini_path, encoding='utf-8')
+    except:
+        cp.read(ini_path, encoding=encoding)
     # 按照键值对形式保存
     for header in cp.sections():
         if user_header_key and header not in config:

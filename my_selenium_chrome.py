@@ -268,7 +268,7 @@ class WaitDriver(Driver):
     WebDriverWait
     """
 
-    def __init__(self, wait_time=0, **kwargs):
+    def __init__(self, wait_time=30, **kwargs):
         """
         初始化显式等待参数
         :param wait_time: int 显式等待时间

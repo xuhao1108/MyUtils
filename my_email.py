@@ -256,8 +256,10 @@ def get_format_info(msg, data, indent=0):
             content = content.decode(charset)
             data['html'] += content.replace('<meta http-equiv="Content-Type" content="text/html; charset=GB18030">', '').replace('\n', '')
         elif content_type == 'application/octet-stream':
+            # print(charset)
             try:
-                file_name = re.findall('name="(.*)"', charset)[0]
+                dh = decode_header(msg.get_filename())
+                file_name = dh[0][0].decode(dh[0][1])
             except:
                 file_name = 'default.txt'
             data['attachment'].append({'filename': file_name, 'content': content})
@@ -332,5 +334,4 @@ def get_service_info():
 
 
 if __name__ == '__main__':
-    obj = YxhReadEmail('outlook.office365.com', 'zjkykbrc@hotmail.com', 'oAqRlF155')
-    print(obj.get_email_len())
+    pass

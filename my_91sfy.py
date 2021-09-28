@@ -35,6 +35,7 @@ class Yxh91ShenFanYun(object):
     def __init__(self, token, project_name, driver_id=None, register_code=None):
         """
         初始化
+        http://bbs.91shenfan.com/forum.php?mod=viewthread&tid=1011&highlight=%E6%96%87%E6%A1%A3
         :param token: 百宝云软件token
         :param project_name: 百宝云软件项目名称
         :param driver_id: 本机机器码
@@ -44,6 +45,8 @@ class Yxh91ShenFanYun(object):
         self.project_name = project_name
         self.driver_id = driver_id if driver_id else generate_driver_id()
         self.register_code = register_code
+        # 访问令牌
+        self.access_token = None
 
     def get_url(self, data):
         """
@@ -94,13 +97,15 @@ class Yxh91ShenFanYun(object):
         # 注册码已经绑定其他机器
         # 注册码不正确
         if '登录成功' in response:
+            self.access_token = response.split('|')[-1].split('&')[0]
             return True
         else:
             return self.get_error_message(response)
 
-    def unbind(self, register_code=None):
+    def unbind(self, password=None, register_code=None):
         """
         客户端解绑注册码
+        :param password: 解绑密码
         :param register_code: 注册码
         :return:
         """
@@ -109,7 +114,10 @@ class Yxh91ShenFanYun(object):
             '项目名称': self.project_name,
             '注册码': register_code or self.register_code,
             '机器码': self.driver_id,
+            # '解绑密码': '此参数可以为空,只能本地解绑,无法异地解绑'
         }
+        if password is not None:
+            data['解绑密码'] = password
         response = self.post_url(data)
         # 注册码与机器码不对应
         if '1' in response:
@@ -117,7 +125,6 @@ class Yxh91ShenFanYun(object):
         else:
             return self.get_error_message(response)
 
-    # TODO 退出、心跳、获取剩余时间
     def logout(self, register_code=None):
         """
         注册码登出
@@ -126,15 +133,34 @@ class Yxh91ShenFanYun(object):
         """
         data = {
             'flag': '注册码退出',
-            '项目名称': self.project_name,
             '注册码': register_code or self.register_code,
-            '机器码': self.driver_id,
-            'access_token': '23593846&yanxuhao'
+            '访问令牌': self.access_token
         }
         response = self.post_url(data)
         # 只有当前客户端,才能退出注册码
         # 注册码已经退出
-        if '1231313132132' in response:
+        # 操作成功
+        if '操作成功' in response:
+            return True
+        else:
+            return self.get_error_message(response)
+
+    def offline(self, register_code=None):
+        """
+        注册码下线
+        :param register_code: 注册码
+        :return:
+        """
+        data = {
+            'flag': '注册码下线',
+            '注册码': register_code or self.register_code,
+            '机器码': self.driver_id,
+        }
+        response = self.post_url(data)
+        # 只有当前客户端,才能退出注册码
+        # 注册码已经退出
+        # 操作成功
+        if '操作成功' in response:
             return True
         else:
             return self.get_error_message(response)
@@ -143,13 +169,14 @@ class Yxh91ShenFanYun(object):
         """
         查询注册码时间
         :param register_code: 注册码
-        :return:
+        :return: 分钟
         """
         data = {
             'flag': '查询注册码时间',
             '项目名称': self.project_name,
             '注册码': register_code or self.register_code,
             '机器码': self.driver_id,
+            '访问令牌': self.access_token,
         }
         response = self.post_url(data)
         # 注册码已经下线
@@ -159,13 +186,6 @@ class Yxh91ShenFanYun(object):
             return True
         else:
             return self.get_error_message(response)
-
-    def run(self):
-        res = self.login()
-        print(res)
-        # print('------------------')
-        # res = self.logout()
-        # print(res)
 
 
 def md5(data_str, encoding='utf-8'):
@@ -190,5 +210,4 @@ def generate_driver_id():
 
 
 if __name__ == '__main__':
-    obj = Yxh91ShenFanYun('5920ce125039e2fffaec949b462b8d2e', 'Chrome群控', register_code='291F15EA83747318F9C5F76616BD4C0D')
-    obj.run()
+    pass
