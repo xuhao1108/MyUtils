@@ -12,6 +12,8 @@ from openpyxl.drawing.image import Image
 from PIL import Image as PILImage
 from io import BytesIO
 
+__all__ = ['YxhReadExcel', 'YxhWriteExcel']
+
 
 class Base(object):
     @staticmethod
@@ -121,9 +123,12 @@ class YxhReadExcel(Base):
         读取单元格
         :param row: int 从0开始，第一行即为0...
         :param col: int 从0开始，第一列即为0...
-        :return: str | int 单元格数据
+        :return: object | None 单元格数据，None表示没有数据
         """
-        return self.sheet.cell_value(row, col)
+        try:
+            return self.sheet.cell_value(row, col)
+        except:
+            return None
 
     def read_row(self, row=0):
         """

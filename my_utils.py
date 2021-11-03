@@ -7,8 +7,14 @@
 import os
 import random
 import time
+import win32clipboard
+
 from datetime import date
 from datetime import timedelta
+from PIL import Image, ImageGrab
+from io import BytesIO
+
+__all__ = ['gennerator_card_id', 'get_time_str', 'set_clipboard_image', 'get_clipboard_image']
 
 codelist = [
     {'code': '110000', 'district': '北京市'}, {'code': '110101', 'district': '东城区'}, {'code': '110102', 'district': '西城区'}, {'code': '110105', 'district': '朝阳区'},
@@ -56,3 +62,62 @@ def gennerator_card_id():
         count += int(card_id[index]) * weight[index]
     card_id = card_id + checkcode[str(count % 11)]
     return card_id
+
+
+def get_time_str(time_stamp):
+    """
+    根据时间戳获取字符串
+    :param time_stamp:
+    :return:
+    """
+    return time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(time_stamp))
+
+
+def get_google_authenticator_code(secret):
+    """
+    获取谷歌认证码
+    """
+    secret = secret.strip().replace(' ', '')
+    if len(secret) % 8 != 0:
+        secret += '=' * (8 - len(secret) % 8)
+    msg = struct.pack(">Q", int(time.time()) // 30)
+    key = base64.b32decode(secret, True)
+    h = bytearray(hmac.new(key, msg, hashlib.sha1).digest())
+    o = h[19] & 15
+    h = str((struct.unpack(">I", h[o:o + 4])[0] & 0x7fffffff) % 1000000)
+    return h.rjust(6, '0')
+
+
+def set_clipboard_image(image_path):
+    """
+    将图片复制到剪贴板
+    :param image_path: 图片路径
+    :return:
+    """
+    # 此时模式为RGB
+    image = Image.open(image_path)
+    output = BytesIO()
+    image.save(output, 'BMP')
+    # BMP图片有14字节的header，需要额外去除
+    data = output.getvalue()[14:]
+    output.close()
+
+    # 复制到剪贴板
+    win32clipboard.OpenClipboard()
+    win32clipboard.EmptyClipboard()
+    win32clipboard.SetClipboardData(win32clipboard.CF_DIB, data)
+    win32clipboard.CloseClipboard()
+
+
+def get_clipboard_image(image_path):
+    """
+    将剪贴板图片保存到本地
+    :param image_path: 图片保存路径
+    :return:
+    """
+    im = ImageGrab.grabclipboard()
+    im.save(image_path)
+
+
+if __name__ == '__main__':
+    pass

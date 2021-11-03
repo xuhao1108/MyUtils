@@ -4,10 +4,16 @@
 # @Author : 闫旭浩
 # @Email : 874591940@qq.com
 # @desc : 91神烦云
-import re
-import wmi
-import hashlib
 import requests
+
+try:
+    # 直接运行本文件时
+    from .my_computer import generate_driver_id
+except:
+    # 从外部引用时
+    from . import generate_driver_id
+
+__all__ = ['Yxh91ShenFanYun']
 
 get_flag_list = [
     '试用', '试用时间',
@@ -186,27 +192,6 @@ class Yxh91ShenFanYun(object):
             return True
         else:
             return self.get_error_message(response)
-
-
-def md5(data_str, encoding='utf-8'):
-    """
-    字符转md5
-    """
-    m = hashlib.md5()
-    m.update(data_str.encode(encoding))
-    return m.hexdigest()
-
-
-def generate_driver_id():
-    """
-    生成每个电脑唯一的机器码
-    """
-    my_wmi = wmi.WMI()
-    for info in my_wmi.Win32_DiskDrive():
-        if info.index == 0:
-            serial = info.SerialNumber if info.SerialNumber else 'default'
-            mac = my_wmi.Win32_NetworkAdapterConfiguration(IPEnabled=1)[0].MACAddress
-            return md5(serial + info.Caption + info.Size + mac)
 
 
 if __name__ == '__main__':

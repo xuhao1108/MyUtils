@@ -6,6 +6,8 @@
 # @desc : 获取多线程返回值
 from threading import Thread
 
+__all__ = ['YxhThread']
+
 
 class YxhThread(Thread):
     def __init__(self, *args, **kwargs):
@@ -37,3 +39,7 @@ class YxhThread(Thread):
             return self.result
         except Exception:
             return None
+
+
+if __name__ == '__main__':
+    pass

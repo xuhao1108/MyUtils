@@ -5,6 +5,8 @@
 # @Email : 874591940@qq.com
 # @desc : 数组和字典的扩展应用
 
+__all__ = ['sort_list_dict', 'sort_dict', 'list_to_dict', 'delete_key']
+
 
 def sort_list_dict(data, values=None, reverse=True):
     """

@@ -7,6 +7,8 @@
 import os
 import configparser
 
+__all__ = ['read_ini']
+
 
 def read_ini(ini_path, encoding='utf_8_sig', user_header_key=False):
     """
@@ -50,3 +52,7 @@ def read_ini(ini_path, encoding='utf_8_sig', user_header_key=False):
             else:
                 config[key] = value
     return config
+
+
+if __name__ == '__main__':
+    pass

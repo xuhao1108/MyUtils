@@ -5,6 +5,9 @@
 # @Email : 874591940@qq.com
 # @desc : 获取电脑相关信息
 import wmi
+import hashlib
+
+__all__ = ['get_cpu_info', 'get_disk_info', 'get_network_info', 'get_mainboard_info', 'generate_driver_id']
 
 my_wmi = wmi.WMI()
 
@@ -68,8 +71,25 @@ def get_mainboard_info():
     return mainboard
 
 
+def md5(data_str, encoding='utf-8'):
+    """
+    字符转md5
+    """
+    m = hashlib.md5()
+    m.update(data_str.encode(encoding))
+    return m.hexdigest()
+
+
+def generate_driver_id():
+    """
+    生成每个电脑唯一的机器码
+    """
+    for info in my_wmi.Win32_DiskDrive():
+        if info.index == 0:
+            serial = info.SerialNumber if info.SerialNumber else 'default'
+            mac = my_wmi.Win32_NetworkAdapterConfiguration(IPEnabled=1)[0].MACAddress
+            return md5(serial + info.Caption + info.Size + mac)
+
+
 if __name__ == '__main__':
-    print(get_cpu_info())
-    print(get_disk_info())
-    print(get_network_info())
-    print(get_mainboard_info())
+    pass

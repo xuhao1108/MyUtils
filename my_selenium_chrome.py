@@ -21,10 +21,14 @@ from selenium.webdriver.support import expected_conditions as ec
 from selenium.webdriver.support.wait import WebDriverWait
 from selenium.webdriver.support.ui import Select
 
-from .my_list_dict import delete_key
+try:
+    # 直接运行本文件时
+    from .my_list_dict import delete_key
+except:
+    # 从外部引用时
+    from . import delete_key
 
-
-# from . import create_proxy_auth_extension
+__all__ = ['YxhChromeDriver', 'get_random_ua']
 
 
 class Options(object):
@@ -60,7 +64,7 @@ class Options(object):
         :param disable_blink_features: True | False 是否隐藏 navigator.webdriver 标志
         :param hide_scroll: True | False 是否隐藏滚动条
         :param user_agent: str 设置请求头
-        :param debugger_address_info: dict 监听地址和端口号。参数值样例：{'ip': '127.0.0.1', 'port': 9222}
+        :param debugger_address_info: dict 监听地址和端口号。参数值样例：{'ip': '127.0.0.1', 'port': 9222}或9222
         :param chrome_data_dir: str  Chrome数据保存路径
         :param proxy_info: dict 代理信息。参数值样例：{'ip': '127.0.0.1', 'port': 9222} {'scheme': 'http','ip': '127.0.0.1', 'port': 9222}
         :param phone_info: dict 页面显示移动端。参数值样例：{'deviceName': 'iPhone 6/7/8'}
@@ -122,6 +126,7 @@ class Options(object):
                 # chrome.exe --user-data-dir="......"
                 self.options.add_argument(r'--user-data-dir={}'.format(chrome_data_dir))
             # 代理
+            self.proxy_info = None
             if proxy_info:
                 if isinstance(proxy_info, str):
                     # login:password@socks5://123.123.123.123:3128
@@ -138,13 +143,16 @@ class Options(object):
                     }
                     # 删除无用的key
                     delete_key(proxy_info)
+                self.proxy_info = proxy_info
+                self.proxy_info['scheme'] = self.proxy_info.get('scheme', 'http')
+                # 认证
                 if proxy_info.get('username'):
-                    self.proxy_plugin_path = create_proxy_auth_extension(**auth_proxy_info)
+                    print(self.proxy_info)
+                    self.proxy_plugin_path = create_proxy_auth_extension(**self.proxy_info)
                     self.options.add_extension(self.proxy_plugin_path)
                 else:
-                    proxy = '{ip}:{port}'.format(**proxy_info)
-                    if proxy_info.get('scheme'):
-                        proxy = proxy_info.get('scheme') + '://' + proxy
+                    # 不认证
+                    proxy = '{scheme}://{ip}:{port}'.format(**proxy_info)
                     self.options.add_argument('--proxy-server={}'.format(proxy))
             # 语言
             if lang:
@@ -233,6 +241,20 @@ class Driver(Options):
         # 查找元素的方式
         self.mode = mode
 
+    def add_cookies(self, cookies, refresh=True):
+        """
+        添加cookies
+        :param cookies: cookies列表
+        :param refresh: 添加后是否刷新页面
+        :return:
+        """
+        for cookie in cookies:
+            [cookie.pop(x) for x in ['sameSite', 'domain', 'expiry', 'expirationDate', ] if x in cookie]
+            print(cookie)
+            if cookie.get('name', '') != '':
+                self.driver.add_cookie(cookie)
+        self.driver.refresh()
+
     def get_element(self, pattern, mode=None):
         """
         获取元素，默认xpath
@@ -293,6 +315,19 @@ class WaitDriver(Driver):
         :return:
         """
         return self.wait.until(ec.presence_of_all_elements_located((mode if mode else self.mode, pattern)))
+
+    def switch_to_frame(self, pattern, mode=None, wait_flag=True):
+        """
+        切换到指定的frame
+        :param pattern: 查找规则
+        :param mode: By.XPATH 查找方式
+        :param wait_flag: 是否等待元素出现
+        :return:
+        """
+        if wait_flag:
+            self.driver.switch_to.frame(self.wait_element(pattern, mode))
+        else:
+            self.driver.switch_to.frame(self.get_element(pattern, mode))
 
     def send_keys_to_element(self, value, pattern, mode=None, clear=True, wait_flag=True):
         """
@@ -493,51 +528,92 @@ class Action(WaitDriver):
         """
         ActionChains(self.driver).reset_actions()
 
-    def click_element_by_action(self, element, reset=True):
+    def click_element_by_action(self, pattern=None, mode=None, wait_flag=True, xoffset=0, yoffset=0, reset=True):
         """
         点击元素
-        :param element: 元素
+        :param pattern: 查找规则
+        :param mode: 查找方式
+        :param wait_flag: 是否等待元素出现
+        :param xoffset: x轴偏移量
+        :param yoffset: y轴偏移量
         :param reset: 是否清除之前的动作
         :return:
         """
         if reset:
             self.reset_acitons()
-        ActionChains(self.driver).click(element).perform()
+        if wait_flag:
+            ActionChains(self.driver).click(None if pattern is None else self.wait_element(pattern, mode)).move_by_offset(xoffset, yoffset).perform()
+        else:
+            ActionChains(self.driver).click(None if pattern is None else self.get_element(pattern, mode)).move_by_offset(xoffset, yoffset).perform()
 
-    def move_to_element_by_action(self, element):
+    def click_element_by_action2(self, pattern=None, mode=None, wait_flag=True, xoffset=0, yoffset=0, reset=True):
         """
-        移动到元素上
-        :param element: 元素
+        点击元素
+        :param pattern: 查找规则
+        :param mode: 查找方式
+        :param wait_flag: 是否等待元素出现
+        :param xoffset: x轴偏移量
+        :param yoffset: y轴偏移量
+        :param reset: 是否清除之前的动作
         :return:
         """
-        ActionChains(self.driver).move_to_element(element).perform()
+        if reset:
+            self.reset_acitons()
+        if wait_flag:
+            ActionChains(self.driver).move_to_element_with_offset(self.wait_element(pattern, mode), xoffset, yoffset).click().perform()
+        else:
+            ActionChains(self.driver).move_to_element_with_offset(self.get_element(pattern, mode), xoffset, yoffset).click().perform()
 
-    def click_and_hold_element_by_action(self, element, wait_time=0.1):
+    def move_to_element_by_action(self, pattern, mode=None, wait_flag=True):
+        """
+        移动到元素上
+        :param pattern: 查找规则
+        :param mode: 查找方式
+        :param wait_flag: 是否等待元素出现
+        :return:
+        """
+        if wait_flag:
+            ActionChains(self.driver).move_to_element(self.wait_element(pattern, mode)).perform()
+        else:
+            ActionChains(self.driver).move_to_element(self.get_element(pattern, mode)).perform()
+
+    def click_and_hold_element_by_action(self, pattern, mode=None, wait_flag=True, wait_time=0.1):
         """
         按住元素若干秒然后松开
-        :param element: 元素
+        :param pattern: 查找规则
+        :param mode: 查找方式
+        :param wait_flag: 是否等待元素出现
         :param wait_time: 点击元素的停留时间
         :return:
         """
+        if wait_flag:
+            element = self.wait_element(pattern, mode)
+        else:
+            element = self.get_element(pattern, mode)
         ActionChains(self.driver).click_and_hold(element).perform()
         time.sleep(wait_time)
         ActionChains(self.driver).release(element).perform()
 
-    def move_element(self, element, x=0, y=0, wait_time=0.5):
+    def move_element(self, pattern, mode=None, wait_flag=True, xoffset=0, yoffset=0, wait_time=0.5):
         """
         移动元素
-        :param element: 元素
-        :param x: x位移
-        :param y: y位移
+        :param pattern: 查找规则
+        :param mode: 查找方式
+        :param wait_flag: 是否等待元素出现
+        :param xoffset: x轴偏移量
+        :param yoffset: y轴偏移量
         :param wait_time: 移动到目标位置后的等待时间
         :return:
         """
-        # 点击“滑块”
-        ActionChains(self.driver).click_and_hold(element).perform()
-        # 拖动“滑块”
-        ActionChains(self.driver).move_by_offset(xoffset=x, yoffset=y).perform()
+        # 点击
+        if wait_flag:
+            ActionChains(self.driver).click_and_hold(self.wait_element(pattern, mode)).perform()
+        else:
+            ActionChains(self.driver).click_and_hold(self.get_element(pattern, mode)).perform()
+        # 拖动
+        ActionChains(self.driver).move_by_offset(xoffset, yoffset).perform()
         time.sleep(wait_time)
-        # 松开“滑块”
+        # 松开
         ActionChains(self.driver).release().perform()
 
 
@@ -608,7 +684,7 @@ class JS(Action):
         :param offset: 偏移量
         :return:
         """
-        self.driver.execute_script('window.scrollTo(0, document.body.scrollHeight + {})'.format(offset))
+        self.driver.execute_script('var offset = {};window.scrollTo(0, document.body.scrollHeight + offset)'.format(offset))
 
     def get_element_inner_text_by_js(self, pattern, mode=None, wait_flag=True):
         """
@@ -865,8 +941,17 @@ class Captcha(JS):
         :param response: 结果密钥
         """
         try:
-            h_captcha_response = self.get_element('//textarea[@name="h-captcha-response"]')
-            self.driver.execute_script('arguments[0].innerHTML = "{}"'.format(response), h_captcha_response)
+            # 写入结果
+            # iframe的data-hcaptcha-response
+            iframe = self.get_element('//h-captcha/iframe')
+            self.driver.execute_script('arguments[0].setAttribute("data-hcaptcha-response", "{}");'.format(response), iframe)
+            # textarea的输入框
+            self.driver.execute_script('$("h-captcha > textarea").val("{}")'.format(response))
+            # 调用回调函数
+            self.driver.execute_script('hcaptcha.getRespKey = function (t) {return "";}')
+            self.driver.execute_script('hcaptcha.getResponse = function (t) {return "' + response + '";}')
+            self.driver.execute_script('document.querySelector("#new_user > div > div:nth-child(4) > h-captcha").onVerify();')
+            # self.driver.execute_script('document.querySelector("#new_user > div > div:nth-child(4) > h-captcha").onVerify("{}");'.format(response))
         except:
             pass
         try:
@@ -1027,17 +1112,11 @@ def get_random_ua():
         "NOKIA5700/ UCWEB7.0.2.37/28/999",
         "Openwave/ UCWEB7.0.2.37/28/999",
         "Mozilla/4.0 (compatible; MSIE 6.0; ) Opera/UCWEB7.0.2.37/28/999",
-        # iPhone 6：
+        # 收集
         # "Mozilla/6.0 (iPhone; CPU iPhone OS 8_0 like Mac OS X) AppleWebKit/536.26 (KHTML, like Gecko) Version/8.0 Mobile/10A5376e Safari/8536.25",
     ]
     return random.choice(user_agent)
 
 
 if __name__ == '__main__':
-    a = 'login:password@socks5://123.123.123.123:3128'
-    b = 'login:password@123.123.123.123:3128'
-    c = 'socks5://123.123.123.123:3128'
-    d = '123.123.123.123:3128'
-    for i in [a, b, c, d]:
-        result = re.match('(((.*):(.*)@)?((.*)://)?)?(.*):(.*)', i).groups()
-        print(result[2], result[3], result[5], result[6], result[7])
+    pass

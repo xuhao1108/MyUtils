@@ -14,6 +14,8 @@ from hashlib import md5
 from io import BytesIO
 from PIL import Image
 
+__all__ = ['YxhChaoJiYing', 'YxhLianZhong', 'YxhTuJian', 'YxhTwoCaptcha', 'YxhAntiCaptcha']
+
 
 class YxhChaoJiYing(object):
     def __init__(self, username, password):
@@ -24,7 +26,7 @@ class YxhChaoJiYing(object):
         """
         # 用户的账号密码
         self.username = username
-        self.password = md5(password.encode('UTF-8')).hexdigest()
+        self.password = md5(password.encode('utf-8')).hexdigest()
         # 开发者的软件id
         self.soft_id = 'fde46b182a3c58d5f02970eb4c16a937'
         # 请求头
@@ -270,6 +272,7 @@ class YxhTuJian(object):
                 data['content'] = content
             if title_image is not None:
                 data['title_image'] = title_image
+            print(data)
             result = json.loads(requests.post(url, json=data).text)
             self.result = result
             if result['success']:
@@ -326,13 +329,13 @@ class YxhTuJian(object):
 class YxhTwoCaptcha(object):
     def __init__(self, api_key):
         """
-        初始化数据
+        初始化数据。推荐注册链接：https://2captcha.com?from=12602328
         :param api_key: 用户密钥
         """
         self.api_key = api_key
-        self.client_key = 3201
+        self.soft_id = 3209
         # 请求结果
-        self.result = None
+        self.task_id = ''
 
     def get_in(self, data):
         """
@@ -341,20 +344,20 @@ class YxhTwoCaptcha(object):
         :return:
         """
         url = 'https://2captcha.com/in.php'
-        result = json.loads(requests.post(url, data=data).text)
-        self.result = result
-        if result['status'] == 1:
-            return result['request']
+        response = requests.post(url, data=data).json()
+        if response['status'] == 1:
+            # 报错时会用到task_id
+            self.task_id = response['request']
+            return self.task_id
         else:
-            print('谷歌验证码第一步请求失败了，原因：{}'.format(result))
+            print('任务创建失败，原因：{}'.format(response))
             return ''
 
-    def get_res(self, action, task_id=None, addr=None):
+    def get_res(self, action, callback_url=None):
         """
         谷歌验证码第二步，获取验证结果
         :param action: 获取动作
-        :param task_id: 任务id
-        :param addr: 回调url
+        :param callback_url: 回调url
         :return:
         """
         try:
@@ -362,109 +365,19 @@ class YxhTwoCaptcha(object):
             data = {
                 'key': self.api_key,
                 'action': action,
+                'id': self.task_id,
                 'json': 1,
             }
-            if task_id:
-                data['id'] = task_id
-            if addr:
-                data['addr'] = addr
-            result = json.loads(requests.get(url, params=data).text)
-            # self.result = result
+            if callback_url:
+                data['addr'] = callback_url
+            result = requests.get(url, params=data).json()
             if result['status'] == 1:
                 return result['request']
             else:
-                # print('请求失败了，原因：{}'.format(result))
+                # print('任务尚未完成...')
                 return ''
         except Exception as e:
-            print('出错了，原因：{}'.format(e))
-            return ''
-
-    def get_google_result(self, page_url, site_key, invisible=0):
-        """
-        识别谷歌图形验证码，推荐链接：https://2captcha.com?from=12602328
-        :param page_url: 网页网址
-        :param site_key: 谷歌密钥
-        :param invisible: 1：reCAPTCHA不可见；0：可见。
-        :return:
-        """
-        try:
-            # 第一步：获取任务ID
-            data = {
-                'key': self.api_key,
-                'method': 'userrecaptcha',
-                'googlekey': site_key,
-                'pageurl': page_url,
-                'invisible': invisible,
-                'json': 1,
-                'soft_id': self.client_key
-            }
-            task_id = self.get_in(data)
-            if task_id == '':
-                return ''
-            # 第二步：获取结果
-            for i in range(0, 120, 5):
-                print('等待获取请求中......')
-                time.sleep(5)
-                result = self.get_res('get', task_id)
-                if result != '':
-                    return result
-            return ''
-        except Exception as e:
-            print('出错了，原因：{}'.format(e))
-            return ''
-
-    def get_hcaptcha_result(self, page_url, site_key, invisible=0, _data=None, user_agent=None, pingback_url=None, proxy=None, proxy_type=None):
-        """
-        识别hcaptcha，推荐链接：https://2captcha.com?from=12602328
-        :param page_url: 网页网址
-        :param site_key: hcaptcha密钥
-        :param invisible: 1：reCAPTCHA不可见；0：可见。默认值为0
-        :param _data: hcaotcha请求参数
-        :param user_agent: hcaotcha请求头
-        :param pingback_url: 回调地址
-        :param proxy: 代理信息 user:password@ip:port
-        :param proxy_type: 代理类型
-        :return:
-        """
-        try:
-            # 第一步：获取任务ID
-            data = {
-                'key': self.api_key,
-                'method': 'hcaptcha',
-                'sitekey': site_key,
-                'pageurl': page_url,
-                'invisible': invisible,
-                'json': 1,
-                'soft_id': self.client_key
-            }
-            if _data:
-                data['data'] = _data
-            if user_agent:
-                data['userAgent'] = user_agent
-            if proxy:
-                data['proxy'] = proxy
-            if proxy_type:
-                data['proxytype'] = proxy_type
-            # 判断是否有回调
-            if pingback_url is not None:
-                data['pingback'] = pingback_url
-                # 添加到回调地址中
-                self.add_pingback(pingback_url)
-            # 获取任务ID
-            task_id = self.get_in(data)
-            # 回调不返回信息
-            if pingback_url is not None or task_id == '':
-                return ''
-            # 第二步：获取结果
-            for i in range(0, 120, 5):
-                print('等待获取请求中......')
-                time.sleep(5)
-                result = self.get_res('get', task_id)
-                if result != '':
-                    return result
-            return ''
-        except Exception as e:
-            print('出错了，原因：{}'.format(e))
+            print('结果获取失败，原因：{}'.format(e))
             return ''
 
     def get_error(self):
@@ -480,7 +393,7 @@ class YxhTwoCaptcha(object):
         :param addr: 回调地址
         :return:
         """
-        return self.get_res('add_pingback', addr=addr)
+        return self.get_res('add_pingback', callback_url=addr)
 
     def get_pingback(self, addr):
         """
@@ -488,7 +401,7 @@ class YxhTwoCaptcha(object):
         :param addr: 回调地址
         :return:
         """
-        return self.get_res('get_pingback', addr=addr)
+        return self.get_res('get_pingback', callback_url=addr)
 
     def del_pingback(self, addr):
         """
@@ -496,7 +409,204 @@ class YxhTwoCaptcha(object):
         :param addr: 回调地址
         :return:
         """
-        return self.get_res('del_pingback', addr=addr)
+        return self.get_res('del_pingback', callback_url=addr)
+
+    def get_google_result(self, url, site_key, invisible=0):
+        """
+        识别谷歌图形验证码，
+        :param url: 网页网址
+        :param site_key: 谷歌密钥
+        :param invisible: 1：reCAPTCHA不可见；0：可见。
+        :return:
+        """
+        try:
+            # 第一步：获取任务ID
+            data = {
+                'key': self.api_key,
+                'method': 'userrecaptcha',
+                'googlekey': site_key,
+                'pageurl': url,
+                'invisible': invisible,
+                'json': 1,
+                'soft_id': self.soft_id
+            }
+            self.get_in(data)
+            if self.task_id == '':
+                return ''
+            # 第二步：获取结果
+            for i in range(0, 120, 5):
+                print('等待获取请求中......')
+                time.sleep(5)
+                result = self.get_res('get')
+                if result != '':
+                    return result
+            return ''
+        except Exception as e:
+            print('出错了，原因：{}'.format(e))
+            return ''
+
+    def get_hcaptcha_result(self, url, site_key, invisible=0, _data=None, user_agent=None, pingback_url=None, proxy=None, proxy_type=None):
+        """
+        识别hcaptcha
+        :param url: 网页网址
+        :param site_key: hcaptcha密钥
+        :param invisible: 1：reCAPTCHA不可见；0：可见。默认值为0
+        :param _data: hcaotcha请求参数
+        :param user_agent: hcaotcha请求头
+        :param pingback_url: 回调地址
+        :param proxy: 代理信息 user:password@ip:port
+        :param proxy_type: 代理类型
+        :return:
+        """
+        try:
+            # 第一步：获取任务ID
+            data = {
+                'key': self.api_key,
+                'method': 'hcaptcha',
+                'sitekey': site_key,
+                'pageurl': url,
+                'invisible': invisible,
+                'json': 1,
+                'soft_id': self.soft_id
+            }
+            if _data:
+                data['data'] = _data
+            if user_agent:
+                data['userAgent'] = user_agent
+            if proxy:
+                data['proxy'] = proxy
+            if proxy_type:
+                data['proxytype'] = proxy_type
+            # 判断是否有回调
+            if pingback_url is not None:
+                data['pingback'] = pingback_url
+                # 添加到回调地址中
+                self.add_pingback(pingback_url)
+            # 获取任务ID
+            self.get_in(data)
+            # 回调不返回信息
+            if pingback_url is None and self.task_id == '':
+                return ''
+            # 第二步：获取结果
+            for i in range(0, 120, 5):
+                print('等待获取请求中......')
+                time.sleep(5)
+                result = self.get_res('get')
+                if result != '':
+                    return result
+            return ''
+        except Exception as e:
+            print('出错了，原因：{}'.format(e))
+            return ''
+
+
+class YxhAntiCaptcha(object):
+    def __init__(self, client_key):
+        """
+        初始化数据。推荐注册链接：http://getcaptchasolution.com/3qwjnfj0k9
+        :param client_key: 用户密钥
+        """
+        self.client_key = client_key
+        self.soft_id = 988
+        # 请求结果
+        self.task_id = 0
+
+    def create_task(self, task, language_pool='en', callback_url=None):
+        """
+        创建任务
+        :param task: 任务对象
+        :param language_pool: 用于设置备用工作人员语言。仅适用于图片人机验证。目前有以下备用语言可用：en（默认设置）：英语队列。rn：多个国家：俄罗斯、乌克兰、白俄罗斯、哈萨克斯坦
+        :param callback_url: 自愿使用的网址，我们将向其发送人机验证任务处理结果。会通过 AJAX POST 请求发送内容，内容类似于 getTaskResult 方法的内容。
+        :return:
+        """
+        url = 'https://api.anti-captcha.com/createTask'
+        data = {
+            'clientKey': self.client_key,
+            'task': task,
+            'softId': self.soft_id,
+            'languagePool': language_pool,
+        }
+        headers = {
+            'Content-type': 'application-json'
+        }
+        if callback_url:
+            data['callbackUrl'] = callback_url
+        response = requests.post(url, json=data, headers=headers).json()
+        if response['errorId'] == 0:
+            # 报错时会用到task_id
+            self.task_id = response['taskId']
+            return self.task_id
+        else:
+            print('任务创建失败，原因：{}；{}'.format(response['errorCode'], response['errorDescription']))
+            return 0
+
+    def get_task_result(self):
+        """
+        获取任务执行结果
+        :return:
+        """
+        url = 'https://api.anti-captcha.com/getTaskResult'
+        data = {
+            'clientKey': self.client_key,
+            'taskId': self.task_id
+        }
+        headers = {
+            'Content-type': 'application-json'
+        }
+        response = requests.post(url, json=data, headers=headers).json()
+        if response['errorId'] == 0:
+            if response['status'] == 'processing':
+                # print('任务尚未完成...')
+                return ''
+            elif response['status'] == 'ready':
+                return response['solution']
+        else:
+            print('结果获取失败，原因：{}；{}'.format(response['errorCode'], response['errorDescription']))
+            return ''
+
+    def get_hcaptcha_result(self, url, site_key, proxy=None):
+        """
+        识别hcaptcha，推荐链接：https://2captcha.com?from=12602328
+        :param url: 网页网址
+        :param site_key: hcaptcha密钥
+        :param proxy: 代理信息 {'user_gent':'浏览器请求头', 'scheme':'代理ip类型', 'ip':'地址', 'port':'端口', 'username':'用户名', 'password':'密码'}
+        :return:
+        """
+        try:
+            # 第一步：创建任务
+            task = {
+                'type': 'HCaptchaTaskProxyless',
+                'websiteURL': url,
+                'websiteKey': site_key,
+            }
+            if proxy:
+                # 修改类型为有代理的
+                task['type'] = 'HCaptchaTask'
+                # 浏览器请求头
+                task['userAgent'] = proxy['user_gent']
+                # 代理ip
+                task['proxyType'] = proxy['scheme']
+                task['proxyAddress'] = proxy['ip']
+                task['proxyPort'] = proxy['port']
+                # 代理ip认证信息
+                if proxy.get('username'):
+                    task['proxyLogin'] = proxy['username']
+                if proxy.get('password'):
+                    task['proxyPassword'] = proxy['password']
+            self.create_task(task)
+            if self.task_id == 0:
+                return ''
+            # 第二步：获取结果
+            for i in range(0, 120, 5):
+                print('等待获取请求中......')
+                time.sleep(5)
+                result = self.get_task_result()
+                if result != '':
+                    return result['gRecaptchaResponse']
+            return ''
+        except Exception as e:
+            print('出错了，原因：{}'.format(e))
+            return ''
 
 
 def get_image_base64(image_path):
@@ -518,43 +628,4 @@ def get_image_base64(image_path):
 
 
 if __name__ == '__main__':
-    # cuchouzhui98@163.com
-    # tpbv991103
-    obj = YxhTwoCaptcha('0adbeac6198db182b971c01e9dba84a9')
-
-    # h_req_data = {
-    # 'Referer': 'https://coinlist.co/',
-    # 'sec-ch-ua': '"Google Chrome";v="93", " Not;A Brand";v="99", "Chromium";v="93"',
-    # 'sec-ch-ua-mobile': '?0',
-    # 'sec-ch-ua-platform': '"Windows"',
-    # 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/93.0.4577.82 Safari/537.36'
-    # }
-    h_req_data = {
-        'utf8': '✓',
-        'authenticity_token': 'lzY6AsECk1bqQMfKnJf8sgQMlmArph8grS/GnT4g8teQXf0Ar4nNLwDf0tLcdRMnF8zB9MZJM4cZVjBNBXawRw==',
-        'user[email]': 'cuchouzhui98@163.com',
-        'user[password]': 'tpbv991103',
-        'user[remember_me]': '0',
-    }
-    info = {
-        'invisible': 1,
-        '_data': json.dumps(h_req_data),
-        'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/93.0.4577.82 Safari/537.36',
-        'proxy': '874591940:25EA8B54ABF8B326DF8A684E8014FD23@66.199.230.13:43444',
-        'proxy_type': 'socks5',
-    }
-    r = obj.get_hcaptcha_result(
-        'https://coinlist.co/login',
-        '73d09584-544c-4fe0-b048-ddf0b6bd3064',
-        **info)
-    print(r)
-    # https://newassets.hcaptcha.com/captcha/v1/2ebd8c0/static/hcaptcha-checkbox.html#
-    # id=0mxnafwlrv5h&host=coinlist.co&sentry=false&reportapi=https%3A%2F%2Faccounts.hcaptcha.com&recaptchacompat=off&custom=false&hl=zh&tplinks=on&sitekey=73d09584-544c-4fe0-b048-ddf0b6bd3064&size=invisible&theme=light
-    # https://newassets.hcaptcha.com/captcha/v1/2ebd8c0/static/hcaptcha-checkbox.html#
-    # id=0d2o83i2j0hm
-    # &host=coinlist.co
-    # &sentry=false
-    # &reportapi=https%3A%2F%2Faccounts.hcaptcha.com
-    # &recaptchacompat=off&custom=false
-    # &hl=zh&tplinks=on&sitekey=73d09584-544c-4fe0-b048-ddf0b6bd3064
-    # &size=invisible&theme=light
+    pass

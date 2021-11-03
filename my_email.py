@@ -16,6 +16,8 @@ from email.header import Header, decode_header
 from email.utils import formataddr, parseaddr
 from email.parser import Parser
 
+__all__ = ['YxhReadEmail', 'YxhSendEmail']
+
 
 class YxhSendEmail(object):
     def __init__(self, host, sender, password, port=0, ssl=True, sender_name=None):
@@ -41,7 +43,7 @@ class YxhSendEmail(object):
     def get_email_list(self):
         pass
 
-    def send_email(self, subject, body, receiver, receiver_name=None, message_type='plain', message_encoding='utf-8', atts=None):
+    def send_email(self, subject, body, receiver, receiver_name=None, message_type='plain', message_encoding='UTF-8', atts=None):
         """
         发送邮件
         :param subject:  主题
@@ -159,14 +161,26 @@ class YxhReadEmail(object):
         """
         resp, lines, octets = self.server.retr(index)
         # lines存储了邮件的原始文本的每一行
-        msg_content = b'\r\n'.join(lines).decode('utf-8')
+        msg_content = b'\r\n'.join(lines).decode('UTF-8', errors='ignore')
         # 解析邮件
         msg = Parser().parsestr(msg_content)
         # 获取邮件时间,格式化收件时间
-        date_time = time.strptime(msg.get('Date')[0:24], '%a, %d %b %Y %H:%M:%S')
-        time_stamp = int(time.mktime(date_time))
-        # 邮件时间格式转换
-        date_time = time.strftime('%Y-%m-%d %H:%M:%S', date_time)
+        try:
+            date_time = time.strptime(re.findall('(.*) \+', msg.get('Date'))[0], '%a, %d %b %Y %H:%M:%S')
+            # if 'UTC' in msg.get('Date'):
+            time_stamp = int(time.mktime(date_time))
+            area_time = re.findall(' \+(\d{2})(\d{2}) ', msg.get('Date'))
+            if area_time:
+                try:
+                    time_stamp += (8 - int(area_time[0][0])) * 60 * 60
+                    time_stamp += int(area_time[0][1]) * 60
+                except:
+                    pass
+            # 邮件时间格式转换
+            date_time = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(time_stamp))
+        except:
+            date_time = ''
+            time_stamp = 0
         email_info = {'time_str': date_time, 'time_stamp': time_stamp}
         get_format_info(msg, email_info)
         return email_info
@@ -250,16 +264,21 @@ def get_format_info(msg, data, indent=0):
         if not charset:
             return 1
         if content_type == 'text/plain':
-            content = content.decode(charset)
+            if 'utf-8' in charset.lower():
+                charset = 'UTF-8'
+            elif 'gbk' in charset.lower():
+                charset = 'GBk'
+            elif 'ascii' in charset.lower():
+                charset = 'ASCII'
+            content = content.decode(charset, errors='ignore')
             data['text'] += content.replace('\r\n \r\n', '\n')
         elif content_type == 'text/html':
-            content = content.decode(charset)
+            content = content.decode(charset, errors='ignore')
             data['html'] += content.replace('<meta http-equiv="Content-Type" content="text/html; charset=GB18030">', '').replace('\n', '')
         elif content_type == 'application/octet-stream':
-            # print(charset)
             try:
                 dh = decode_header(msg.get_filename())
-                file_name = dh[0][0].decode(dh[0][1])
+                file_name = dh[0][0].decode(dh[0][1], errors='ignore')
             except:
                 file_name = 'default.txt'
             data['attachment'].append({'filename': file_name, 'content': content})
@@ -273,7 +292,7 @@ def decode_str(s):
     """
     value, charset = decode_header(s)[0]
     if charset:
-        value = value.decode(charset)
+        value = value.decode(charset, errors='ignore')
     return value
 
 
