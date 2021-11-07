@@ -40,6 +40,8 @@ def read_ini(ini_path, encoding='utf_8_sig', user_header_key=False):
                         value = int(value)
                 except:
                     pass
+            elif 'list' in key:
+                value = value.split(',')
             # 路径类
             elif 'path' in key or 'dir' in key:
                 try:

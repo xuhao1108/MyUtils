@@ -3,18 +3,23 @@
 # @Time : 2021/7/22 16:43
 # @Author : 闫旭浩
 # @Email : 874591940@qq.com
-# @desc : ...
+# @desc : 常用工具包
 import os
 import random
 import time
 import win32clipboard
+
+import pyperclip
+import win32api
+import win32con
+import psutil
 
 from datetime import date
 from datetime import timedelta
 from PIL import Image, ImageGrab
 from io import BytesIO
 
-__all__ = ['gennerator_card_id', 'get_time_str', 'set_clipboard_image', 'get_clipboard_image']
+__all__ = ['gennerator_card_id', 'get_time_str', 'set_clipboard_data', 'get_clipboard_data']
 
 codelist = [
     {'code': '110000', 'district': '北京市'}, {'code': '110101', 'district': '东城区'}, {'code': '110102', 'district': '西城区'}, {'code': '110105', 'district': '朝阳区'},
@@ -64,13 +69,13 @@ def gennerator_card_id():
     return card_id
 
 
-def get_time_str(time_stamp):
+def get_time_str(time_stamp=None):
     """
     根据时间戳获取字符串
     :param time_stamp:
     :return:
     """
-    return time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(time_stamp))
+    return time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(time_stamp or time.time()))
 
 
 def get_google_authenticator_code(secret):
@@ -88,35 +93,72 @@ def get_google_authenticator_code(secret):
     return h.rjust(6, '0')
 
 
-def set_clipboard_image(image_path):
+def set_clipboard_data(text=None, image_path=None):
     """
     将图片复制到剪贴板
+    :param text: 文本
     :param image_path: 图片路径
     :return:
     """
-    # 此时模式为RGB
-    image = Image.open(image_path)
-    output = BytesIO()
-    image.save(output, 'BMP')
-    # BMP图片有14字节的header，需要额外去除
-    data = output.getvalue()[14:]
-    output.close()
-
     # 复制到剪贴板
     win32clipboard.OpenClipboard()
     win32clipboard.EmptyClipboard()
-    win32clipboard.SetClipboardData(win32clipboard.CF_DIB, data)
+
+    if image_path:
+        # 此时模式为RGB
+        image = Image.open(image_path)
+        output = BytesIO()
+        image.save(output, 'BMP')
+        # BMP图片有14字节的header，需要额外去除
+        data = output.getvalue()[14:]
+        output.close()
+        win32clipboard.SetClipboardData(win32clipboard.CF_DIB, data)
+    if text:
+        win32clipboard.SetClipboardData(win32clipboard.CF_TEXT, text.encode('GBK'))
+
     win32clipboard.CloseClipboard()
 
 
-def get_clipboard_image(image_path):
+def get_clipboard_data(image_path=None):
     """
     将剪贴板图片保存到本地
     :param image_path: 图片保存路径
     :return:
     """
-    im = ImageGrab.grabclipboard()
-    im.save(image_path)
+    if image_path:
+        im = ImageGrab.grabclipboard()
+        im.save(image_path)
+        return image_path
+    else:
+        win32clipboard.OpenClipboard()
+        text = win32clipboard.GetClipboardData(win32clipboard.CF_TEXT)
+        win32clipboard.CloseClipboard()
+        try:
+            return text.decode('GBK')
+        except:
+            pass
+
+
+def choose_file_from_os(file_path):
+    """
+    从系统对话框中选择文件
+    :param file_path: 图片路径
+    :return:
+    """
+    # 复制文件路径到剪切板
+    pyperclip.copy(file_path)
+    # 等待程序加载 时间 看你电脑的速度 单位(秒)
+    time.sleep(1)
+    # 发送 ctrl（17） + V（86）按钮
+    win32api.keybd_event(17, 0, 0, 0)
+    win32api.keybd_event(86, 0, 0, 0)
+    win32api.keybd_event(86, 0, win32con.KEYEVENTF_KEYUP, 0)  # 松开按键
+    win32api.keybd_event(17, 0, win32con.KEYEVENTF_KEYUP, 0)
+    time.sleep(1)
+    win32api.keybd_event(13, 0, 0, 0)  # (回车)
+    win32api.keybd_event(13, 0, win32con.KEYEVENTF_KEYUP, 0)  # 松开按键
+    win32api.keybd_event(13, 0, 0, 0)  # (回车)
+    win32api.keybd_event(13, 0, win32con.KEYEVENTF_KEYUP, 0)
 
 
 if __name__ == '__main__':

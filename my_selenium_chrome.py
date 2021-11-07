@@ -521,6 +521,13 @@ class Action(WaitDriver):
     ActionChains
     """
 
+    def get_action(self):
+        """
+        获取action对象
+        :return:
+        """
+        return ActionChains(self.driver)
+
     def reset_acitons(self):
         """
         清除动作
@@ -617,7 +624,27 @@ class Action(WaitDriver):
         ActionChains(self.driver).release().perform()
 
 
-class JS(Action):
+class Keys(Action):
+    """
+    Keys
+    """
+
+    @staticmethod
+    def get_keys():
+        """
+        获取Keys对象
+        :return:
+        """
+        return Keys
+
+    def use_copy_key(self):
+        self.get_action().key_down(Keys.CONTROL).send_keys('c').key_up(Keys.CONTROL).perform()
+
+    def use_paste_key(self):
+        self.get_action().key_down(Keys.CONTROL).send_keys('v').key_up(Keys.CONTROL).perform()
+
+
+class JS(Keys):
     """
     JS
     """
@@ -685,6 +712,52 @@ class JS(Action):
         :return:
         """
         self.driver.execute_script('var offset = {};window.scrollTo(0, document.body.scrollHeight + offset)'.format(offset))
+
+    def scroll_to_bottm_by_step(self, step=None, offset=0):
+        """
+        滑动到页面底部
+        :param step: 步长
+        :param offset: 偏移量
+        :return:
+        """
+        start = 0
+
+        client_height = self.driver.execute_script('return document.body.clientHeight;')
+        scroll_height = self.driver.execute_script('return document.body.scrollHeight;')
+        stop = max(client_height, scroll_height)
+
+        # 分辨率作为每次滑动的步长
+        if step is None:
+            step = self.driver.execute_script('return window.screen.height;')
+        elif isinstance(step, float):
+            step = int((stop - start) * step)
+        # 依次滑动
+        while stop - start > 0:
+            self.scroll_to(start)
+            time.sleep(0.1)
+            start += step
+        # 滑动到末尾
+        self.scroll_to(start)
+
+        # 动态加载的
+        retry_num = 0
+        while retry_num < 3:
+            # 若动态加载的，则获取新高度，并重新滑动
+            client_height = self.driver.execute_script('return document.body.clientHeight;')
+            scroll_height = self.driver.execute_script('return document.body.scrollHeight;')
+            stop = max(client_height, scroll_height)
+            # 到底了
+            if stop <= start:
+                return True
+
+            # 依次滑动
+            while stop - start > 0:
+                self.scroll_to(start)
+                time.sleep(0.1)
+                start += step
+            # 滑动到末尾
+            self.scroll_to(start)
+            retry_num += 1
 
     def get_element_inner_text_by_js(self, pattern, mode=None, wait_flag=True):
         """
@@ -854,6 +927,10 @@ class JS(Action):
 
 
 class Captcha(JS):
+    """
+    Captcha
+    """
+
     @staticmethod
     def get_track(distance, current=0, v=0, t=0.2, add_a=2, reduce_a=-3, mid=None):
         """
@@ -962,20 +1039,9 @@ class Captcha(JS):
 
 
 class YxhChromeDriver(Captcha):
-    def get_action(self):
-        """
-        获取action对象
-        :return:
-        """
-        return ActionChains(self.driver)
-
-    @staticmethod
-    def get_keys():
-        """
-        获取Keys对象
-        :return:
-        """
-        return Keys
+    """
+    YxhChromeDriver
+    """
 
     @staticmethod
     def get_position(size, location):
