@@ -7,10 +7,10 @@
 import os
 import configparser
 
-__all__ = ['read_ini']
+__all__ = ['read_ini', 'write_ini']
 
 
-def read_ini(ini_path, encoding='utf_8_sig', user_header_key=False):
+def read_ini(ini_path='config.ini', encoding=None, user_header_key=False):
     """
     读取配置文件
     :param ini_path: 配置文件路径
@@ -21,10 +21,15 @@ def read_ini(ini_path, encoding='utf_8_sig', user_header_key=False):
     config = {}
     # 读取配置文件
     cp = configparser.ConfigParser()
-    try:
-        cp.read(ini_path, encoding='utf-8')
-    except:
+    if encoding:
         cp.read(ini_path, encoding=encoding)
+    else:
+        for encoding in ['utf-8', 'utf_8_sig', 'gbk']:
+            try:
+                cp.read(ini_path, encoding=encoding)
+                break
+            except:
+                pass
     # 按照键值对形式保存
     for header in cp.sections():
         if user_header_key and header not in config:
@@ -32,7 +37,7 @@ def read_ini(ini_path, encoding='utf_8_sig', user_header_key=False):
         for key, value in cp.items(header):
             value = value.strip()
             # 数值类
-            if 'num' in key:
+            if 'num' in key or 'time' in key:
                 try:
                     if '.' in value:
                         value = float(value)
@@ -54,6 +59,25 @@ def read_ini(ini_path, encoding='utf_8_sig', user_header_key=False):
             else:
                 config[key] = value
     return config
+
+
+def write_ini(data_dict, ini_path='config.ini', encoding=None, section='config'):
+    cp = configparser.ConfigParser()
+    if encoding:
+        cp.read(ini_path, encoding=encoding)
+    else:
+        for encoding in ['utf-8', 'utf_8_sig', 'gbk']:
+            try:
+                cp.read(ini_path, encoding=encoding)
+                break
+            except:
+                pass
+    if section not in cp.sections():
+        cp.add_section(section)
+
+    for key, value in data_dict.items():
+        cp.set(str(section), str(key), str(value))
+    cp.write(open(ini_path, 'w'))
 
 
 if __name__ == '__main__':
