@@ -211,8 +211,11 @@ class Options(object):
         浏览器退出时，若有插件，则删除插件
         :return:
         """
-        if self.proxy_plugin_path:
-            os.remove(self.proxy_plugin_path)
+        try:
+            if self.proxy_plugin_path:
+                os.remove(self.proxy_plugin_path)
+        except:
+            pass
 
 
 class Driver(Options):
@@ -648,6 +651,21 @@ class JS(Keys):
     """
     JS
     """
+
+    def open_window_url(self, url):
+        """
+        打开标签页
+        :param url: 网址
+        :return:
+        """
+        self.driver.execute_script('window.open("{}")'.format(url))
+
+    def close_window_url(self):
+        """
+        关闭标签页
+        :return:
+        """
+        self.driver.execute_script('window.close()')
 
     def get_user_agent(self):
         """

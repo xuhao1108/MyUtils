@@ -9,6 +9,7 @@ import re
 import time
 import poplib
 import smtplib
+import traceback
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from email.mime.application import MIMEApplication
@@ -141,13 +142,16 @@ class YxhReadEmail(object):
         resp, mails, octets = self.server.list()
         return len(mails)
 
-    def get_all_email_info(self):
+    def get_all_email_info(self, stop=0):
         """
         获取所有邮件信息
         :return:
         """
         email_info_list = []
-        for index in range(self.get_email_len(), 0, -1):
+        email_len = self.get_email_len()
+        for index in range(email_len, 0, -1):
+            if stop <= email_len - index:
+                break
             # 索引号从1开始
             email_info = self.get_email_info(index)
             email_info_list.append(email_info)
@@ -157,7 +161,7 @@ class YxhReadEmail(object):
         """
         获取指定下标的邮件信息
         :param index: 邮件下标，索引从1开始
-        :return:
+        :return: {'time_str': '', 'time_stamp': '', 'text': '', 'html': '', 'attachment': '', 'from': '', 'to': '', 'subject': ''}
         """
         resp, lines, octets = self.server.retr(index)
         # lines存储了邮件的原始文本的每一行
@@ -166,16 +170,11 @@ class YxhReadEmail(object):
         msg = Parser().parsestr(msg_content)
         # 获取邮件时间,格式化收件时间
         try:
-            date_time = time.strptime(re.findall('(.*) \+', msg.get('Date'))[0], '%a, %d %b %Y %H:%M:%S')
-            # if 'UTC' in msg.get('Date'):
+            date_info = re.findall('(.*) ([+-])(\d\d)(\d\d)', msg.get('Date'))[0]
+            date_time = time.strptime(date_info[0], '%a, %d %b %Y %H:%M:%S')
             time_stamp = int(time.mktime(date_time))
-            area_time = re.findall(' \+(\d{2})(\d{2}) ', msg.get('Date'))
-            if area_time:
-                try:
-                    time_stamp += (8 - int(area_time[0][0])) * 60 * 60
-                    time_stamp += int(area_time[0][1]) * 60
-                except:
-                    pass
+            if len(date_info) > 1:
+                time_stamp += (int(date_info[2]) * 60 * 60 + int(date_info[3] * 60)) * (1 if date_info[1] == '+' else -1)
             # 邮件时间格式转换
             date_time = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(time_stamp))
         except:
