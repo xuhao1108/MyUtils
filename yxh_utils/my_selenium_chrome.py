@@ -348,7 +348,10 @@ class WaitDriver(Driver):
             element = self.get_element(pattern, mode)
         if clear:
             element.clear()
-        element.send_keys(value)
+        try:
+            element.send_keys(*value)
+        except:
+            element.send_keys(value)
 
     def click_element(self, pattern, mode=None, wait_flag=True):
         """
@@ -627,7 +630,7 @@ class Action(WaitDriver):
         ActionChains(self.driver).release().perform()
 
 
-class Keys(Action):
+class MyKeys(Action):
     """
     Keys
     """
@@ -647,7 +650,7 @@ class Keys(Action):
         self.get_action().key_down(Keys.CONTROL).send_keys('v').key_up(Keys.CONTROL).perform()
 
 
-class JS(Keys):
+class JS(MyKeys):
     """
     JS
     """

@@ -1,25 +1,26 @@
-#!/usr/bin/env python
+# coding=utf-8
+# !/usr/bin/env python
 # -*- coding: utf-8 -*-
 # @Time : 2021/7/22 16:43
 # @Author : 闫旭浩
 # @Email : 874591940@qq.com
-# @desc : 常用工具包
+# @desc : ...
 import os
 import random
 import time
+import chardet
 import win32clipboard
 
 import pyperclip
 import win32api
 import win32con
-import psutil
 
 from datetime import date
 from datetime import timedelta
 from PIL import Image, ImageGrab
 from io import BytesIO
 
-__all__ = ['gennerator_card_id', 'get_time_str', 'set_clipboard_data', 'get_clipboard_data']
+__all__ = ['gennerator_card_id', 'get_time_str', 'set_clipboard_data', 'get_clipboard_data', 'choose_file_from_os_diag', 'choose_file_from_os_diag2']
 
 codelist = [
     {'code': '110000', 'district': '北京市'}, {'code': '110101', 'district': '东城区'}, {'code': '110102', 'district': '西城区'}, {'code': '110105', 'district': '朝阳区'},
@@ -104,6 +105,8 @@ def set_clipboard_data(text=None, image_path=None):
     win32clipboard.OpenClipboard()
     win32clipboard.EmptyClipboard()
 
+    if text:
+        win32clipboard.SetClipboardData(win32clipboard.CF_UNICODETEXT, text)
     if image_path:
         # 此时模式为RGB
         image = Image.open(image_path)
@@ -113,8 +116,6 @@ def set_clipboard_data(text=None, image_path=None):
         data = output.getvalue()[14:]
         output.close()
         win32clipboard.SetClipboardData(win32clipboard.CF_DIB, data)
-    if text:
-        win32clipboard.SetClipboardData(win32clipboard.CF_TEXT, text.encode('GBK'))
 
     win32clipboard.CloseClipboard()
 
@@ -134,31 +135,43 @@ def get_clipboard_data(image_path=None):
         text = win32clipboard.GetClipboardData(win32clipboard.CF_TEXT)
         win32clipboard.CloseClipboard()
         try:
-            return text.decode('GBK')
+            encoding = chardet.detect(text).get('encoding')
+            return str(text, encoding)
         except:
-            pass
+            return text
 
 
-def choose_file_from_os(file_path):
+def choose_file_from_os_diag(file_path):
     """
     从系统对话框中选择文件
     :param file_path: 图片路径
     :return:
     """
     # 复制文件路径到剪切板
-    pyperclip.copy(file_path)
-    # 等待程序加载 时间 看你电脑的速度 单位(秒)
-    time.sleep(1)
+    pyperclip.copy(os.path.abspath(file_path))
+    # 等待对话框加载
+    time.sleep(2)
     # 发送 ctrl（17） + V（86）按钮
     win32api.keybd_event(17, 0, 0, 0)
     win32api.keybd_event(86, 0, 0, 0)
     win32api.keybd_event(86, 0, win32con.KEYEVENTF_KEYUP, 0)  # 松开按键
     win32api.keybd_event(17, 0, win32con.KEYEVENTF_KEYUP, 0)
-    time.sleep(1)
+    time.sleep(2)
     win32api.keybd_event(13, 0, 0, 0)  # (回车)
     win32api.keybd_event(13, 0, win32con.KEYEVENTF_KEYUP, 0)  # 松开按键
     win32api.keybd_event(13, 0, 0, 0)  # (回车)
     win32api.keybd_event(13, 0, win32con.KEYEVENTF_KEYUP, 0)
+
+
+def choose_file_from_os_diag2(file_path, title='打开', text_control='[Class:Edit; instance:1]', btn_control='[Class:Button; instance:1]'):
+    import autoit
+    # datas=[('C:\\Users\\87459\\AppData\\Roaming\\Python\\Python37\\site-packages\\autoit\\lib\\AutoItX3_x64.dll', 'autoit\\lib')],
+    # 设置焦点
+    autoit.control_focus(title, text_control)
+    # 输入文本
+    autoit.control_set_text(title, text_control, os.path.abspath(file_path))
+    # 单击按钮
+    autoit.control_click(title, btn_control)
 
 
 if __name__ == '__main__':
