@@ -663,6 +663,14 @@ class JS(MyKeys):
         """
         self.driver.execute_script('window.open("{}")'.format(url))
 
+    def set_zoom(self, zoom):
+        """
+        设置浏览器缩放
+        :param zoom: 缩放数：0.1~x
+        :return:
+        """
+        self.driver.execute_script('document.body.style.zoom="{}";'.format(zoom))
+
     def close_window_url(self):
         """
         关闭标签页
