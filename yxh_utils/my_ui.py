@@ -7,14 +7,8 @@
 from tkinter import *
 from tkinter.messagebox import *
 
-try:
-    # 直接运行本文件时
-    from .my_91sfy import Yxh91ShenFanYun
-    from .my_ini import read_ini, write_ini
-except:
-    # 从外部引用时
-    from . import Yxh91ShenFanYun
-    from . import read_ini, write_ini
+from .my_91sfy import Yxh91ShenFanYun
+from .my_config import read_ini, write_ini
 
 __all__ = ['LoginFrame']
 

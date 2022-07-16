@@ -8,8 +8,9 @@ import threading
 import time
 from threading import Thread, Lock
 
-# from yxh_utils import YxhChromeDrver, YxhReadExcel, YxhWriteExcel, read_ini
-from . import YxhChromeDrver, YxhReadExcel, YxhWriteExcel, read_ini
+from .my_selenium_chrome import YxhChromeDriver
+from .my_excel import YxhReadExcel, YxhWriteExcel
+from .my_config import read_ini
 
 # 线程锁
 my_lock = Lock()

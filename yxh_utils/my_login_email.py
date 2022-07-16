@@ -10,14 +10,8 @@ import re
 import time
 from PIL import Image
 
-try:
-    # 直接运行本文件时
-    from .my_selenium_chrome import YxhChromeDriver
-    from .my_captcha import YxhLianZhong
-except:
-    # 从外部引用时
-    from . import YxhChromeDriver
-    from . import YxhLianZhong
+from .my_selenium_chrome import YxhChromeDriver
+from .my_captcha import YxhLianZhong
 
 __all__ = ['Yxh163Email', 'YxhGoogleEmail']
 

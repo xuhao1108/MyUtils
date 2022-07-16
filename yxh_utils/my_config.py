@@ -7,7 +7,9 @@
 import os
 import configparser
 
-__all__ = ['read_ini', 'write_ini']
+from .my_design_patterns import singleton
+
+__all__ = ['read_ini', 'write_ini', 'YxhConfig']
 
 
 def read_ini(ini_path='config.ini', encoding=None, user_header_key=False):
@@ -50,8 +52,7 @@ def read_ini(ini_path='config.ini', encoding=None, user_header_key=False):
             # 路径类
             elif 'path' in key or 'dir' in key:
                 try:
-                    base_path = os.path.split(ini_path)[0]
-                    value = os.path.join(base_path, value)
+                    value = os.path.realpath(value)
                 except:
                     pass
             if user_header_key:
@@ -80,5 +81,16 @@ def write_ini(data_dict, ini_path='config.ini', encoding=None, section='config')
     cp.write(open(ini_path, 'w'))
 
 
-if __name__ == '__main__':
-    pass
+@singleton
+class YxhConfig(object):
+
+    def __init__(self, path):
+
+        config = read_ini(path)
+        if config.get('label') is None:
+            config['label'] = 'ALL'
+        elif config.get('label') != 'ALL':
+            config['label'] = [x.split(',') for x in config['label'].split(';')]
+
+        self.config = config
+        self.__dict__.update(config)

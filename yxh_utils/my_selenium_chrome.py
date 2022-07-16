@@ -22,11 +22,18 @@ from selenium.webdriver.support.wait import WebDriverWait
 from selenium.webdriver.support.ui import Select
 
 try:
-    # 直接运行本文件时
     from .my_list_dict import delete_key
 except:
-    # 从外部引用时
-    from . import delete_key
+    def delete_key(data, option=None):
+        """
+        当value为指定值时，则删除key
+        :param data: 字典对象
+        :param option: 当value为指定值时，则删除key
+        :return:
+        """
+        delete_keys = [k for k, v in data.items() if v == option]
+        for key in delete_keys:
+            data.pop(key)
 
 __all__ = ['YxhChromeDriver', 'get_random_ua']
 

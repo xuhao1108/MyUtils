@@ -6,12 +6,7 @@
 # @desc : 91神烦云
 import requests
 
-try:
-    # 直接运行本文件时
-    from .my_computer import generate_driver_id
-except:
-    # 从外部引用时
-    from . import generate_driver_id
+from .my_computer import generate_driver_id
 
 __all__ = ['Yxh91ShenFanYun']
 
@@ -61,7 +56,7 @@ class Yxh91ShenFanYun(object):
         :return: 
         """
         url = 'https://get.91shenfan.com/api/{}'.format(self.token)
-        return requests.get(url, data=data).text
+        return requests.get(url, data=data, verify=False).text
 
     def post_url(self, data):
         """
@@ -70,7 +65,7 @@ class Yxh91ShenFanYun(object):
         :return: 
         """
         url = 'https://post.91shenfan.com/api/{}'.format(self.token)
-        return requests.post(url, data=data).text
+        return requests.post(url, data=data, verify=False).text
 
     @staticmethod
     def get_error_message(response):
